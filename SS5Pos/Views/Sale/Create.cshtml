@@ -1,0 +1,151 @@
+@model SS5Pos.Models.Sale
+
+@{
+    ViewData["Title"] = "Create";
+}
+<hr />
+@*<form asp-action="Create">*@
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="row">
+        <div class="col-8">
+            <div class="row">
+                <div class="col-4">
+                    
+                    <div class="form-group">
+                        <label for="search" class="control-label">Scan barcode</label>
+                        <input type="text" id="search" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group">
+                        <label asp-for="IssueDate" class="control-label"></label>
+                        <input asp-for="IssueDate" class="form-control" />
+                        <span asp-validation-for="IssueDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group">
+                        <label asp-for="CustomerId" class="control-label"></label>
+                        <select asp-for="CustomerId" class="form-control" asp-items="ViewBag.Customer"></select>
+                    </div>
+                </div>
+            </div>
+            <br/>
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-bordered" id="saleList">
+                        <thead>
+                            <tr>
+                                <th>ITEM</th>
+                                <th>PRICE</th>
+                                <th>QTY</th>
+                                <th>AMOUNT</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="form-group">
+                <label asp-for="Total" class="control-label"></label>
+                <input readonly asp-for="Total" class="form-control" />
+                <span asp-validation-for="Total" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Discount" class="control-label"></label>
+                <input asp-for="Discount" value="0" class="form-control" />
+                <span asp-validation-for="Discount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="GrandTotal" class="control-label"></label>
+                <input readonly asp-for="GrandTotal" class="form-control" />
+                <span asp-validation-for="GrandTotal" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="button" value="Create" class="btn btn-primary" />
+            </div>
+        </div>
+    </div>
+@*</form>*@
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            $("#search").keypress(function (e) {
+                var search = $("#search").val();
+                if (e.keyCode === 13) {
+                    $("#search").val("");
+                    $.ajax({
+                        method: "GET",
+                        url: "/sale/GetProduct/?barcode=" + search,
+                        contentType: "application/json",
+                        success: function (data) {
+                            var i = 0;
+                            var b = false;
+                            $("#saleList > tbody > tr").each(function () {
+                                var barcode = document.getElementsByName("barcode[]")[i].value;
+                                if (barcode === search) {
+                                    b = true;
+                                    var qty = $(this).closest("tr").find("td:eq(2)").text();
+                                    var price = $(this).closest("tr").find("td:eq(1)").text();
+                                    $(this).closest("tr").find("td:eq(2)").text(Number(qty) + 1);
+                                    $(this).closest("tr").find("td:eq(3)").text((Number(qty) + 1) * Number(price));
+                                    CalculateTotal();
+                                }
+                                i++;
+                            });
+                            if (b == false) {
+                                var row = "<tr><td><input type='hidden' name='barcode[]' value='" + search + "'/>" + data.productName;
+                                row += "</td><td>" + data.price;
+                                row += "</td><td>1</td>";
+                                row += "<td>" + data.price + "</td>";
+                                row += "<td><button class='btn btn-success'>+</button>";
+                                row += " <button class='btn btn-primary'> - </button>";
+                                row += " <button class='btn btn-warning'> Rem </button></td></tr>";
+                                $("#saleList").append(row);
+                                CalculateTotal();
+                            }
+                        }, error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            });
+            $("#Discount").blur(function () {
+                CalculateTotal();
+            });
+        });
+        function CalculateTotal() {
+            var total = 0;
+            $("#saleList > tbody > tr").each(function () {
+                var amount = $(this).closest("tr").find("td:eq(3)").text();
+                total += Number(amount);
+            });
+            $("#Total").val(total);
+            var discount = $("#Discount").val();
+            var discountPer = (Number(total) * Number(discount)) / 100;
+            $("#GrandTotal").val(Number(total) - Number(discountPer));
+        }
+        //function GetProduct(Id) {
+        //    $.ajax(
+        //        {
+        //            method: "GET",
+        //            url: "/Sale/GetProduct/?Id=" + Id,
+        //            contentType:"application/json",
+        //            success: function (data) {
+        //                console.log(data);
+        //            }, error: function (error) {
+        //                console.log(error);
+        //            }
+        //        }
+        //    );
+        //}
+    </script>
+}
